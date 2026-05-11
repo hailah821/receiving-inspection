@@ -325,8 +325,11 @@ function render() {
             (!isLast ?
               '<button class="btn-next" onclick="nextStep(' + i + ')">Next — ' + nextName + ' →</button>' +
               '<button class="btn-skip" onclick="skipStep(' + i + ')">Skip</button>' :
-              '<button class="btn-accept" onclick="acceptProduct()">✅ Accept Product</button>' +
-              '<button class="btn-reject" onclick="rejectProduct()">❌ Reject Product</button>'
+              (data['quantity'].done ? 
+                '<button class="btn-accept" onclick="acceptProduct()">✅ Accept Product</button>' +
+                '<button class="btn-reject" onclick="rejectProduct()">❌ Reject Product</button>' :
+                '<button class="btn-next" onclick="completeStep(' + i + ')">✓ Complete</button>'
+              )
             ) +
           '</div>' +
         '</div>'
@@ -396,10 +399,7 @@ function updateProgress() {
   const done = STEPS.filter(s => data[s.id].done).length;
   document.getElementById('prog-count').textContent = done + ' / ' + STEPS.length;
   document.getElementById('prog-fill').style.width = (done / STEPS.length * 100) + '%';
-  // Enable if any step has data OR decision made
-  const hasData = STEPS.some(s => data[s.id].done || data[s.id].image || data[s.id].note);
-  const hasDecision = data['quantity'].decision;
-  document.getElementById('gen-btn').disabled = !hasData && !hasDecision;
+  document.getElementById('gen-btn').disabled = false;
 }
 
 // Render note as canvas image to support Arabic + any language
