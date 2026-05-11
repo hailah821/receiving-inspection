@@ -396,7 +396,10 @@ function updateProgress() {
   const done = STEPS.filter(s => data[s.id].done).length;
   document.getElementById('prog-count').textContent = done + ' / ' + STEPS.length;
   document.getElementById('prog-fill').style.width = (done / STEPS.length * 100) + '%';
-  document.getElementById('gen-btn').disabled = done === 0;
+  // Enable if any step has data OR decision made
+  const hasData = STEPS.some(s => data[s.id].done || data[s.id].image || data[s.id].note);
+  const hasDecision = data['quantity'].decision;
+  document.getElementById('gen-btn').disabled = !hasData && !hasDecision;
 }
 
 // Render note as canvas image to support Arabic + any language
