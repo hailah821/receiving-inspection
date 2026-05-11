@@ -255,9 +255,9 @@ input[type=file] { display:none; }
       <div class="submit-card">
         <div class="submit-info">
           <div class="submit-title">Ready to finalize?</div>
-          <div class="submit-sub">Generate a PDF report of this inspection</div>
+          <div class="submit-sub">PDF will be generated automatically when you Accept or Reject</div>
         </div>
-        <button class="btn-generate" id="gen-btn" onclick="generatePDF()">📄 Generate PDF</button>
+        <button class="btn-generate" id="gen-btn" onclick="generatePDF()" style="display:none">📄 Generate PDF</button>
       </div>
     </div>
   </div>
@@ -381,18 +381,18 @@ function completeStep(i) {
   toast('All steps reviewed!', 'green');
 }
 
-function acceptProduct() {
+async function acceptProduct() {
   data['quantity'].done = true;
   data['quantity'].decision = 'accepted';
   render();
-  toast('Product Accepted!', 'green');
+  await generatePDF();
 }
 
-function rejectProduct() {
+async function rejectProduct() {
   data['quantity'].done = true;
   data['quantity'].decision = 'rejected';
   render();
-  toast('Product Rejected!', '');
+  await generatePDF();
 }
 
 function updateProgress() {
@@ -460,6 +460,18 @@ async function generatePDF() {
   doc.text('Date: ' + date, 14, 36);
 
   let y = 56;
+
+  // Decision banner at top
+  if (data['quantity'].decision) {
+    const isAccepted = data['quantity'].decision === 'accepted';
+    doc.setFillColor(isAccepted ? 34 : 220, isAccepted ? 197 : 38, isAccepted ? 94 : 38);
+    doc.rect(14, y-4, pw-28, 16, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(14);
+    doc.setTextColor(255,255,255);
+    doc.text(isAccepted ? '✓  PRODUCT ACCEPTED' : '✗  PRODUCT REJECTED', pw/2, y+7, { align:'center' });
+    y += 24;
+  }
 
   for (const step of STEPS) {
     const d = data[step.id];
