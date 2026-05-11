@@ -436,14 +436,15 @@ function noteToImage(text) {
 }
 
 async function generatePDF() {
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    toast('Loading PDF library, please try again...', '');
-    return;
-  }
-  const ref = 'Inspection-' + new Date().toLocaleDateString().replace(/\//g,'-');
+  const ref = 'Inspection-' + new Date().toLocaleDateString().replace(/[/]/g,'-');
   const date = new Date().toLocaleString();
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  let doc;
+  try {
+    doc = new window.jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  } catch(e) {
+    try { doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' }); }
+    catch(e2) { toast('PDF library not loaded. Please refresh page.', ''); return; }
+  }
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
 
