@@ -435,8 +435,8 @@ function noteToImage(text) {
 }
 
 function generatePDF() {
-  const ref = 'Inspection-' + new Date().toLocaleDateString().replace(/[/]/g,'-');
-  const date = new Date().toLocaleString();
+  const ref = 'Inspection-' + new Date().toLocaleDateString('en-US').replace(/[/]/g,'-');
+  const date = new Date().toLocaleString('en-US');
   const decision = data['quantity'].decision || '';
 
   // Build print HTML
