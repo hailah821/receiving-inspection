@@ -154,6 +154,18 @@ input[type=file] { display:none; }
   font-size:13px; font-weight:700; cursor:pointer; transition:all 0.15s;
 }
 .btn-skip:hover { background:var(--gray-200); }
+.btn-accept {
+  flex:1; padding:13px; background:#22c55e; color:white;
+  border:none; border-radius:12px; font-family:'Nunito',sans-serif;
+  font-size:14px; font-weight:800; cursor:pointer; transition:all 0.15s;
+}
+.btn-accept:hover { background:#16a34a; }
+.btn-reject {
+  flex:1; padding:13px; background:var(--red); color:white;
+  border:none; border-radius:12px; font-family:'Nunito',sans-serif;
+  font-size:14px; font-weight:800; cursor:pointer; transition:all 0.15s;
+}
+.btn-reject:hover { background:#c0392b; }
 
 .submit-card {
   background:var(--purple); border-radius:20px; padding:28px;
@@ -290,7 +302,11 @@ function render() {
         '<div class="step-num">' + (isDone ? '✓' : (i+1)) + '</div>' +
         '<div class="step-info">' +
           '<div class="step-name">' + s.name + '</div>' +
-          '<div class="step-hint">' + (isDone ? 'Completed ✓' : isActive ? 'In progress...' : s.hint) + '</div>' +
+          '<div class="step-hint">' + 
+        (isDone && s.id === 'quantity' && data[s.id].decision ? 
+          (data[s.id].decision === 'accepted' ? '✅ Product Accepted' : '❌ Product Rejected') : 
+          (isDone ? 'Completed ✓' : isActive ? 'In progress...' : s.hint)) + 
+        '</div>' +
         '</div>' +
       '</div>' +
       (isActive ?
@@ -309,7 +325,8 @@ function render() {
             (!isLast ?
               '<button class="btn-next" onclick="nextStep(' + i + ')">Next — ' + nextName + ' →</button>' +
               '<button class="btn-skip" onclick="skipStep(' + i + ')">Skip</button>' :
-              '<button class="btn-next" onclick="completeStep(' + i + ')">✓ Complete</button>'
+              '<button class="btn-accept" onclick="acceptProduct()">✅ Accept Product</button>' +
+              '<button class="btn-reject" onclick="rejectProduct()">❌ Reject Product</button>'
             ) +
           '</div>' +
         '</div>'
@@ -359,6 +376,20 @@ function completeStep(i) {
   data[STEPS[i].id].done = true;
   render();
   toast('All steps reviewed!', 'green');
+}
+
+function acceptProduct() {
+  data['quantity'].done = true;
+  data['quantity'].decision = 'accepted';
+  render();
+  toast('Product Accepted!', 'green');
+}
+
+function rejectProduct() {
+  data['quantity'].done = true;
+  data['quantity'].decision = 'rejected';
+  render();
+  toast('Product Rejected!', '');
 }
 
 function updateProgress() {
