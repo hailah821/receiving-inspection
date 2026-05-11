@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ygii — Receiving Inspection</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --purple: #484888;
+  --purple-light: #EEEEF5;
+  --purple-mid: #6B6BAA;
+  --red: #EA435D;
+  --red-light: #FDEEF1;
+  --yellow: #ECC371;
+  --yellow-light: #FDF6E3;
+  --gray-50: #F8F9FC;
+  --gray-100: #F0F1F8;
+  --gray-200: #E2E3EF;
+  --gray-400: #9898B8;
+  --gray-600: #555575;
+  --gray-800: #22223A;
+  --white: #FFFFFF;
+  --shadow: 0 2px 12px rgba(72,72,136,0.10);
+  --shadow-md: 0 4px 24px rgba(72,72,136,0.15);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Nunito',sans-serif; background:var(--gray-50); color:var(--gray-800); min-height:100vh; display:flex; }
+
+.sidebar {
+  width:220px; background:var(--white); border-right:1px solid var(--gray-200);
+  display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0;
+}
+.sidebar-logo {
+  padding:24px 20px 20px; border-bottom:1px solid var(--gray-200);
+  display:flex; align-items:center; gap:10px;
+}
+.logo-mark {
+  width:38px; height:38px; background:var(--purple); border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:900; color:white; font-family:'Nunito',sans-serif;
+}
+.logo-text h2 { font-size:17px; font-weight:900; color:var(--purple); }
+.logo-text span { font-size:11px; color:var(--gray-400); font-weight:600; }
+.sidebar-nav { padding:14px 10px; flex:1; }
+.nav-label { font-size:10px; font-weight:800; color:var(--gray-400); text-transform:uppercase; letter-spacing:1px; padding:8px 10px 4px; }
+.nav-item {
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  border-radius:10px; cursor:pointer; font-size:13.5px; font-weight:700;
+  color:var(--gray-600); transition:all 0.15s; margin-bottom:2px;
+}
+.nav-item:hover { background:var(--gray-100); color:var(--gray-800); }
+.nav-item.active { background:var(--purple-light); color:var(--purple); }
+.nav-badge {
+  margin-left:auto; background:var(--purple); color:white;
+  font-size:10px; font-weight:800; padding:2px 7px; border-radius:20px; display:none;
+}
+
+.main { margin-left:220px; flex:1; padding:32px; min-height:100vh; }
+.page { display:none; }
+.page.active { display:block; }
+
+.topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+.page-title { font-size:24px; font-weight:900; color:var(--gray-800); }
+.page-sub { font-size:13px; color:var(--gray-400); font-weight:600; margin-top:2px; }
+
+.wizard { max-width:640px; margin:0 auto; }
+
+.ref-card {
+  background:white; border:1px solid var(--gray-200); border-radius:16px;
+  padding:20px 24px; margin-bottom:24px; box-shadow:var(--shadow);
+  display:flex; align-items:center; gap:14px;
+}
+.ref-label { font-size:12px; font-weight:800; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; }
+.ref-input {
+  flex:1; background:var(--gray-50); border:1.5px solid var(--gray-200);
+  border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif;
+  font-size:14px; font-weight:600; color:var(--gray-800); outline:none; transition:border-color 0.15s;
+}
+.ref-input:focus { border-color:var(--purple); background:white; }
+.ref-input::placeholder { color:var(--gray-400); font-weight:600; }
+
+.progress-wrap { margin-bottom:24px; }
+.progress-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.progress-label { font-size:12px; font-weight:700; color:var(--gray-400); }
+.progress-count { font-size:12px; font-weight:800; color:var(--purple); }
+.progress-bar { height:8px; background:var(--gray-200); border-radius:20px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--purple),var(--purple-mid)); border-radius:20px; transition:width 0.4s ease; }
+
+.step-card {
+  background:white; border:1.5px solid var(--gray-200); border-radius:20px;
+  overflow:hidden; box-shadow:var(--shadow); margin-bottom:16px;
+}
+.step-card.active-step { border-color:var(--purple); box-shadow:var(--shadow-md); }
+.step-card.done-step { border-color:rgba(72,72,136,0.3); }
+
+.step-header {
+  padding:18px 22px; display:flex; align-items:center; gap:12px; cursor:pointer;
+}
+.step-num {
+  width:36px; height:36px; border-radius:50%; border:2px solid var(--gray-200);
+  display:flex; align-items:center; justify-content:center; font-size:14px;
+  font-weight:800; color:var(--gray-400); flex-shrink:0; transition:all 0.2s;
+  background:var(--gray-100);
+}
+.step-card.active-step .step-num { background:var(--purple); border-color:var(--purple); color:white; }
+.step-card.done-step .step-num { background:var(--purple-light); border-color:var(--purple); color:var(--purple); }
+.step-info { flex:1; }
+.step-name { font-size:16px; font-weight:800; }
+.step-hint { font-size:12px; color:var(--gray-400); font-weight:600; margin-top:1px; }
+.step-card.active-step .step-name { color:var(--purple); }
+
+.step-body { display:none; padding:0 22px 22px; }
+.step-card.active-step .step-body { display:block; }
+
+.upload-zone {
+  border:2px dashed var(--gray-200); border-radius:14px;
+  padding:32px 20px; text-align:center; cursor:pointer;
+  transition:all 0.2s; background:var(--gray-50); margin-bottom:14px;
+}
+.upload-zone:hover { border-color:var(--purple); background:var(--purple-light); }
+.upload-zone.has-image { padding:0; border:2px solid var(--purple); background:white; }
+.upload-zone img { width:100%; max-height:240px; object-fit:contain; border-radius:12px; display:block; }
+.upload-icon { font-size:32px; margin-bottom:8px; }
+.upload-text { font-size:13px; font-weight:700; color:var(--gray-600); }
+.upload-hint { font-size:11px; color:var(--gray-400); font-weight:600; margin-top:4px; }
+input[type=file] { display:none; }
+.remove-img-btn {
+  margin-top:8px; background:none; border:none; color:var(--red);
+  font-size:12px; font-weight:700; cursor:pointer; font-family:'Nunito',sans-serif;
+}
+
+.note-label-txt { font-size:11px; font-weight:800; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; display:block; }
+.note-area {
+  width:100%; background:var(--gray-50); border:1.5px solid var(--gray-200);
+  border-radius:12px; padding:12px 14px; font-family:'Nunito',sans-serif;
+  font-size:14px; font-weight:600; color:var(--gray-800); resize:none;
+  outline:none; min-height:90px; transition:border-color 0.15s;
+}
+.note-area:focus { border-color:var(--purple); background:white; }
+.note-area::placeholder { color:var(--gray-400); }
+
+.btn-row { display:flex; gap:10px; margin-top:16px; }
+.btn-next {
+  flex:1; padding:13px; background:var(--purple); color:white;
+  border:none; border-radius:12px; font-family:'Nunito',sans-serif;
+  font-size:14px; font-weight:800; cursor:pointer; transition:all 0.15s;
+}
+.btn-next:hover { background:var(--purple-mid); }
+.btn-skip {
+  padding:13px 18px; background:var(--gray-100); color:var(--gray-600);
+  border:none; border-radius:12px; font-family:'Nunito',sans-serif;
+  font-size:13px; font-weight:700; cursor:pointer; transition:all 0.15s;
+}
+.btn-skip:hover { background:var(--gray-200); }
+
+.submit-card {
+  background:var(--purple); border-radius:20px; padding:28px;
+  display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 8px 32px rgba(72,72,136,0.3); margin-top:8px;
+}
+.submit-info .submit-title { font-size:18px; font-weight:900; color:white; margin-bottom:4px; }
+.submit-info .submit-sub { font-size:13px; color:rgba(255,255,255,0.7); font-weight:600; }
+.btn-generate {
+  padding:14px 28px; background:white; color:var(--purple);
+  border:none; border-radius:14px; font-family:'Nunito',sans-serif;
+  font-size:14px; font-weight:900; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.btn-generate:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,0,0,0.15); }
+.btn-generate:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+.records-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+.record-card {
+  background:white; border:1.5px solid var(--gray-200); border-radius:16px;
+  padding:20px; transition:all 0.2s; box-shadow:var(--shadow);
+}
+.record-card:hover { border-color:var(--purple); transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.record-ref { font-size:15px; font-weight:900; color:var(--gray-800); margin-bottom:4px; }
+.record-date { font-size:11px; color:var(--gray-400); font-weight:700; margin-bottom:12px; }
+.record-steps { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:14px; }
+.record-step-tag { font-size:10px; font-weight:800; padding:3px 9px; border-radius:20px; background:var(--purple-light); color:var(--purple); }
+.record-actions { display:flex; gap:8px; }
+.btn-dl { padding:7px 14px; background:var(--purple-light); color:var(--purple); border:none; border-radius:8px; font-family:'Nunito',sans-serif; font-size:12px; font-weight:800; cursor:pointer; }
+.btn-del { padding:7px 14px; background:var(--red-light); color:var(--red); border:none; border-radius:8px; font-family:'Nunito',sans-serif; font-size:12px; font-weight:800; cursor:pointer; }
+.records-empty { text-align:center; padding:64px 20px; color:var(--gray-400); }
+.empty-icon { font-size:48px; margin-bottom:12px; }
+.empty-title { font-size:16px; font-weight:800; margin-bottom:6px; }
+.empty-sub { font-size:13px; font-weight:600; }
+
+.toast {
+  position:fixed; bottom:24px; right:24px; background:white;
+  border:1.5px solid var(--gray-200); color:var(--gray-800);
+  font-size:13px; font-weight:700; padding:12px 18px; border-radius:14px;
+  z-index:999; box-shadow:var(--shadow-md);
+  animation:toastIn 0.2s ease; display:flex; align-items:center; gap:8px;
+  font-family:'Nunito',sans-serif;
+}
+.toast.green { border-color:rgba(72,72,136,0.4); color:var(--purple); }
+@keyframes toastIn { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">Y</div>
+    <div class="logo-text">
+      <h2>Ygii</h2>
+      <span>Inspection</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Menu</div>
+    <div class="nav-item active" onclick="showPage('inspect')" id="nav-inspect">
+      <span>🔍</span> New Inspection
+    </div>
+    <div class="nav-item" onclick="showPage('records')" id="nav-records">
+      <span>📁</span> Records
+      <span class="nav-badge" id="records-badge">0</span>
+    </div>
+  </nav>
+</aside>
+
+<div class="main">
+  <div class="page active" id="page-inspect">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Receiving Inspection</div>
+        <div class="page-sub">Fill in each step, then generate your report</div>
+      </div>
+    </div>
+    <div class="wizard">
+      <div class="ref-card">
+        <span class="ref-label">Reference</span>
+        <input class="ref-input" id="ref-input" placeholder="e.g. PO-2026-001 or batch name...">
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top">
+          <span class="progress-label">Progress</span>
+          <span class="progress-count" id="prog-count">0 / 5</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      </div>
+      <div id="steps-list"></div>
+      <div class="submit-card">
+        <div class="submit-info">
+          <div class="submit-title">Ready to finalize?</div>
+          <div class="submit-sub">Generate a PDF report of this inspection</div>
+        </div>
+        <button class="btn-generate" id="gen-btn" onclick="generatePDF()">📄 Generate PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-records">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Inspection Records</div>
+        <div class="page-sub">All saved PDF reports</div>
+      </div>
+    </div>
+    <div id="records-list"></div>
+  </div>
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+const STEPS = [
+  { id:'material',   name:'Material',   hint:'Check raw materials and quality' },
+  { id:'dimensions', name:'Dimensions', hint:'Verify measurements and specs' },
+  { id:'colors',     name:'Colors',     hint:'Inspect color accuracy and consistency' },
+  { id:'creatives',  name:'Creatives',  hint:'Review artwork and packaging design' },
+  { id:'quantity',   name:'Quantity',   hint:'Count and verify quantities' },
+];
+
+let data = {};
+let currentStep = 0;
+STEPS.forEach(s => { data[s.id] = { image:null, note:'', done:false }; });
+
+function render() {
+  const list = document.getElementById('steps-list');
+  list.innerHTML = STEPS.map((s, i) => {
+    const d = data[s.id];
+    const isActive = i === currentStep;
+    const isDone = d.done;
+    const isLast = i === STEPS.length - 1;
+    const nextName = isLast ? '' : STEPS[i+1].name;
+
+    return '<div class="step-card ' + (isActive?'active-step':'') + ' ' + (isDone&&!isActive?'done-step':'') + '" id="card-' + s.id + '">' +
+      '<div class="step-header" onclick="jumpTo(' + i + ')">' +
+        '<div class="step-num">' + (isDone ? '✓' : (i+1)) + '</div>' +
+        '<div class="step-info">' +
+          '<div class="step-name">' + s.name + '</div>' +
+          '<div class="step-hint">' + (isDone ? 'Completed ✓' : isActive ? 'In progress...' : s.hint) + '</div>' +
+        '</div>' +
+      '</div>' +
+      (isActive ?
+        '<div class="step-body">' +
+          '<div class="upload-zone ' + (d.image?'has-image':'') + '" onclick="document.getElementById(\'file-' + s.id + '\').click()">' +
+            (d.image ?
+              '<img src="' + d.image + '" alt="photo">' :
+              '<div class="upload-icon">📸</div><div class="upload-text">Tap to attach photo</div><div class="upload-hint">Photo from camera or gallery</div>'
+            ) +
+          '</div>' +
+          '<input type="file" id="file-' + s.id + '" accept="image/*" capture="environment" onchange="handleImg(\'' + s.id + '\',this)">' +
+          (d.image ? '<button class="remove-img-btn" onclick="removeImg(\'' + s.id + '\')">✕ Remove photo</button>' : '') +
+          '<span class="note-label-txt" style="margin-top:14px;">Notes (optional)</span>' +
+          '<textarea class="note-area" id="note-' + s.id + '" placeholder="Add any notes..." oninput="saveNote(\'' + s.id + '\',this.value)">' + d.note + '</textarea>' +
+          '<div class="btn-row">' +
+            (!isLast ?
+              '<button class="btn-next" onclick="nextStep(' + i + ')">Next — ' + nextName + ' →</button>' +
+              '<button class="btn-skip" onclick="skipStep(' + i + ')">Skip</button>' :
+              '<button class="btn-next" onclick="completeStep(' + i + ')">✓ Complete</button>'
+            ) +
+          '</div>' +
+        '</div>'
+      : '') +
+    '</div>';
+  }).join('');
+  updateProgress();
+}
+
+function jumpTo(i) {
+  currentStep = i;
+  render();
+  setTimeout(() => {
+    document.getElementById('card-' + STEPS[i].id).scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 50);
+}
+
+function handleImg(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { data[id].image = e.target.result; render(); };
+  reader.readAsDataURL(file);
+}
+
+function removeImg(id) { data[id].image = null; render(); }
+function saveNote(id, val) { data[id].note = val; }
+
+function nextStep(i) {
+  data[STEPS[i].id].done = true;
+  currentStep = i + 1;
+  render();
+  setTimeout(() => {
+    document.getElementById('card-' + STEPS[i+1].id).scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 50);
+}
+
+function skipStep(i) {
+  currentStep = i + 1;
+  render();
+  setTimeout(() => {
+    document.getElementById('card-' + STEPS[i+1].id).scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 50);
+}
+
+function completeStep(i) {
+  data[STEPS[i].id].done = true;
+  render();
+  toast('All steps reviewed!', 'green');
+}
+
+function updateProgress() {
+  const done = STEPS.filter(s => data[s.id].done).length;
+  document.getElementById('prog-count').textContent = done + ' / ' + STEPS.length;
+  document.getElementById('prog-fill').style.width = (done / STEPS.length * 100) + '%';
+  document.getElementById('gen-btn').disabled = done === 0;
+}
+
+// Render note as canvas image to support Arabic + any language
+function noteToImage(text) {
+  return new Promise(resolve => {
+    const scale = 3;
+    const W = 550, H = 120;
+    const canvas = document.createElement('canvas');
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#6464AA';
+    ctx.font = 'bold 12px Nunito, Arial, sans-serif';
+    ctx.fillText('Notes:', 0, 16);
+    ctx.fillStyle = '#22223A';
+    ctx.font = '14px Nunito, Arial, sans-serif';
+    const words = text.split(' ');
+    let line = '', lineY = 36;
+    for (const w of words) {
+      const test = line + w + ' ';
+      if (ctx.measureText(test).width > W - 4 && line) {
+        ctx.fillText(line.trim(), 0, lineY);
+        line = w + ' ';
+        lineY += 20;
+        if (lineY > H - 8) break;
+      } else { line = test; }
+    }
+    if (line) ctx.fillText(line.trim(), 0, lineY);
+    resolve(canvas.toDataURL('image/png'));
+  });
+}
+
+async function generatePDF() {
+  const ref = document.getElementById('ref-input').value.trim() || ('Inspection-' + Date.now());
+  const date = new Date().toLocaleString();
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+
+  // Header
+  doc.setFillColor(72, 72, 136);
+  doc.rect(0, 0, pw, 44, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(18);
+  doc.text('Ygii - Receiving Inspection', 14, 18);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.text('Reference: ' + ref, 14, 29);
+  doc.text('Date: ' + date, 14, 36);
+
+  let y = 56;
+
+  for (const step of STEPS) {
+    const d = data[step.id];
+    if (!d.image && !d.note && !d.done) continue;
+    if (y > 245) { doc.addPage(); y = 20; }
+
+    // Step header
+    doc.setFillColor(238, 238, 245);
+    doc.roundedRect(14, y-5, pw-28, 12, 2, 2, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(12);
+    doc.setTextColor(72, 72, 136);
+    doc.text(step.name, 17, y+3);
+    doc.setFontSize(9);
+    doc.setTextColor(d.done ? 34 : 150, d.done ? 139 : 150, d.done ? 34 : 150);
+    doc.text(d.done ? 'Completed' : 'Pending', pw-35, y+3);
+    y += 16;
+
+    // Image
+    if (d.image) {
+      try {
+        if (y > 200) { doc.addPage(); y = 20; }
+        const img = new Image();
+        await new Promise(res => { img.onload = res; img.src = d.image; });
+        const maxW = pw - 28, maxH = 80;
+        let drawW = maxW, drawH = (img.naturalHeight / img.naturalWidth) * drawW;
+        if (drawH > maxH) { drawH = maxH; drawW = (img.naturalWidth / img.naturalHeight) * drawH; }
+        doc.addImage(d.image, 'JPEG', 14 + (maxW - drawW)/2, y, drawW, drawH, '', 'FAST');
+        y += drawH + 6;
+      } catch(e) {}
+    }
+
+    // Note as image
+    if (d.note) {
+      if (y > 250) { doc.addPage(); y = 20; }
+      const noteImg = await noteToImage(d.note);
+      const noteH = 24;
+      doc.addImage(noteImg, 'PNG', 14, y, pw-28, noteH);
+      y += noteH + 6;
+    }
+
+    y += 8;
+  }
+
+  doc.setTextColor(180,180,200);
+  doc.setFontSize(8);
+  doc.text('Generated by Ygii Receiving Inspection', 14, ph-10);
+
+  const pdfData = doc.output('datauristring');
+  const records = JSON.parse(localStorage.getItem('ygii_inspections') || '[]');
+  records.unshift({ id:Date.now(), ref, date, pdfData, steps:STEPS.filter(s=>data[s.id].done).map(s=>s.name) });
+  localStorage.setItem('ygii_inspections', JSON.stringify(records));
+  doc.save('ygii-inspection-' + ref + '.pdf');
+  updateBadge();
+  toast('PDF saved!', 'green');
+  setTimeout(() => { if(confirm('Start a new inspection?')) resetAll(); }, 800);
+}
+
+function resetAll() {
+  STEPS.forEach(s => { data[s.id] = { image:null, note:'', done:false }; });
+  document.getElementById('ref-input').value = '';
+  currentStep = 0;
+  render();
+}
+
+function renderRecords() {
+  const records = JSON.parse(localStorage.getItem('ygii_inspections') || '[]');
+  const container = document.getElementById('records-list');
+  if (!records.length) {
+    container.innerHTML = '<div class="records-empty"><div class="empty-icon">📁</div><div class="empty-title">No records yet</div><div class="empty-sub">Complete an inspection to see it here</div></div>';
+    return;
+  }
+  container.innerHTML = '<div class="records-grid">' +
+    records.map(r =>
+      '<div class="record-card">' +
+        '<div class="record-ref">' + r.ref + '</div>' +
+        '<div class="record-date">' + r.date + '</div>' +
+        '<div class="record-steps">' + r.steps.map(s=>'<span class="record-step-tag">✓ '+s+'</span>').join('') + '</div>' +
+        '<div class="record-actions">' +
+          '<button class="btn-dl" onclick="dlRecord(' + r.id + ')">⬇ Download</button>' +
+          '<button class="btn-del" onclick="delRecord(' + r.id + ')">Delete</button>' +
+        '</div>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+}
+
+function dlRecord(id) {
+  const r = JSON.parse(localStorage.getItem('ygii_inspections')||'[]').find(x=>x.id==id);
+  if (!r) return;
+  const a = document.createElement('a');
+  a.href = r.pdfData; a.download = 'ygii-inspection-' + r.ref + '.pdf'; a.click();
+}
+
+function delRecord(id) {
+  if (!confirm('Delete this record?')) return;
+  let records = JSON.parse(localStorage.getItem('ygii_inspections')||'[]').filter(x=>x.id!=id);
+  localStorage.setItem('ygii_inspections', JSON.stringify(records));
+  renderRecords(); updateBadge();
+}
+
+function updateBadge() {
+  const n = JSON.parse(localStorage.getItem('ygii_inspections')||'[]').length;
+  const b = document.getElementById('records-badge');
+  b.textContent = n; b.style.display = n ? 'inline' : 'none';
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if (name==='records') renderRecords();
+}
+
+function toast(msg, type='') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+
+render();
+updateBadge();
+</script>
+</body>
+</html>
