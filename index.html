@@ -231,10 +231,7 @@ input[type=file] { display:none; }
       </div>
     </div>
     <div class="wizard">
-      <div class="ref-card">
-        <span class="ref-label">Reference</span>
-        <input class="ref-input" id="ref-input" placeholder="e.g. PO-2026-001 or batch name...">
-      </div>
+
       <div class="progress-wrap">
         <div class="progress-top">
           <span class="progress-label">Progress</span>
@@ -405,7 +402,7 @@ function noteToImage(text) {
 }
 
 async function generatePDF() {
-  const ref = document.getElementById('ref-input').value.trim() || ('Inspection-' + Date.now());
+  const ref = 'Inspection-' + new Date().toLocaleDateString().replace(/\//g,'-');
   const date = new Date().toLocaleString();
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   const pw = doc.internal.pageSize.getWidth();
@@ -442,16 +439,25 @@ async function generatePDF() {
     doc.text(d.done ? 'Completed' : 'Pending', pw-35, y+3);
     y += 16;
 
-    // Image
+    // Image - high quality
     if (d.image) {
       try {
         if (y > 200) { doc.addPage(); y = 20; }
         const img = new Image();
         await new Promise(res => { img.onload = res; img.src = d.image; });
-        const maxW = pw - 28, maxH = 80;
-        let drawW = maxW, drawH = (img.naturalHeight / img.naturalWidth) * drawW;
-        if (drawH > maxH) { drawH = maxH; drawW = (img.naturalWidth / img.naturalHeight) * drawH; }
-        doc.addImage(d.image, 'JPEG', 14 + (maxW - drawW)/2, y, drawW, drawH, '', 'FAST');
+        // Compress to high quality JPEG via canvas
+        const canvas = document.createElement('canvas');
+        const maxPx = 2400;
+        let cw = img.naturalWidth, ch = img.naturalHeight;
+        if (cw > maxPx) { ch = Math.round(ch * maxPx / cw); cw = maxPx; }
+        canvas.width = cw; canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, cw, ch);
+        const hqData = canvas.toDataURL('image/jpeg', 0.95);
+        const maxW = pw - 28, maxH = 100;
+        let drawW = maxW, drawH = (ch / cw) * drawW;
+        if (drawH > maxH) { drawH = maxH; drawW = (cw / ch) * drawH; }
+        doc.addImage(hqData, 'JPEG', 14 + (maxW - drawW)/2, y, drawW, drawH);
         y += drawH + 6;
       } catch(e) {}
     }
@@ -484,7 +490,7 @@ async function generatePDF() {
 
 function resetAll() {
   STEPS.forEach(s => { data[s.id] = { image:null, note:'', done:false }; });
-  document.getElementById('ref-input').value = '';
+  
   currentStep = 0;
   render();
 }
