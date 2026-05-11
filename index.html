@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ygii — Receiving Inspection</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
   --purple: #484888;
@@ -252,12 +251,12 @@ input[type=file] { display:none; }
         <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
       </div>
       <div id="steps-list"></div>
-      <div class="submit-card">
+      <div class="submit-card" id="finalize-card">
         <div class="submit-info">
           <div class="submit-title">Ready to finalize?</div>
-          <div class="submit-sub">PDF will be generated automatically when you Accept or Reject</div>
+          <div class="submit-sub">Generate a PDF report of this inspection</div>
         </div>
-        <button class="btn-generate" id="gen-btn" onclick="generatePDF()" style="display:none">📄 Generate PDF</button>
+        <button class="btn-generate" id="gen-btn" onclick="generatePDF()">📄 Generate PDF</button>
       </div>
     </div>
   </div>
@@ -381,18 +380,18 @@ function completeStep(i) {
   toast('All steps reviewed!', 'green');
 }
 
-async function acceptProduct() {
+function acceptProduct() {
   data['quantity'].done = true;
   data['quantity'].decision = 'accepted';
   render();
-  await generatePDF();
+  document.getElementById('finalize-card').scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
-async function rejectProduct() {
+function rejectProduct() {
   data['quantity'].done = true;
   data['quantity'].decision = 'rejected';
   render();
-  await generatePDF();
+  document.getElementById('finalize-card').scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
 function updateProgress() {
@@ -435,109 +434,71 @@ function noteToImage(text) {
   });
 }
 
-async function generatePDF() {
+function generatePDF() {
   const ref = 'Inspection-' + new Date().toLocaleDateString().replace(/[/]/g,'-');
   const date = new Date().toLocaleString();
-  let doc;
-  try {
-    doc = new window.jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  } catch(e) {
-    try { doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' }); }
-    catch(e2) { toast('PDF library not loaded. Please refresh page.', ''); return; }
-  }
-  const pw = doc.internal.pageSize.getWidth();
-  const ph = doc.internal.pageSize.getHeight();
+  const decision = data['quantity'].decision || '';
 
-  // Header
-  doc.setFillColor(72, 72, 136);
-  doc.rect(0, 0, pw, 44, 'F');
-  doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(18);
-  doc.text('Ygii - Receiving Inspection', 14, 18);
-  doc.setFontSize(10);
-  doc.setFont('helvetica','normal');
-  doc.text('Reference: ' + ref, 14, 29);
-  doc.text('Date: ' + date, 14, 36);
+  // Build print HTML
+  let stepsHTML = '';
+  STEPS.forEach(s => {
+    const d = data[s.id];
+    if (!d.image && !d.note && !d.done) return;
+    stepsHTML += '<div class="ps">' +
+      '<div class="ps-header">' +
+        '<span class="ps-name">' + s.name + '</span>' +
+        '<span class="ps-status ' + (d.done?'done':'') + '">' + (d.done?'Completed':'Pending') + '</span>' +
+      '</div>' +
+      (d.image ? '<img src="' + d.image + '" class="ps-img">' : '') +
+      (d.note ? '<div class="ps-note"><strong>Notes:</strong> ' + d.note + '</div>' : '') +
+    '</div>';
+  });
 
-  let y = 56;
+  const decisionHTML = decision ?
+    '<div class="decision ' + decision + '">' +
+      (decision === 'accepted' ? '✓ PRODUCT ACCEPTED' : '✗ PRODUCT REJECTED') +
+    '</div>' : '';
 
-  // Decision banner at top
-  if (data['quantity'].decision) {
-    const isAccepted = data['quantity'].decision === 'accepted';
-    doc.setFillColor(isAccepted ? 34 : 220, isAccepted ? 197 : 38, isAccepted ? 94 : 38);
-    doc.rect(14, y-4, pw-28, 16, 'F');
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(14);
-    doc.setTextColor(255,255,255);
-    doc.text(isAccepted ? '✓  PRODUCT ACCEPTED' : '✗  PRODUCT REJECTED', pw/2, y+7, { align:'center' });
-    y += 24;
-  }
+  const printWin = window.open('', '_blank');
+  printWin.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <title>Ygii Inspection Report</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #222; padding: 20px; }
+      .header { background: #484888; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+      .header h1 { font-size: 20px; margin-bottom: 6px; }
+      .header p { font-size: 12px; opacity: 0.8; }
+      .decision { padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+      .decision.accepted { background: #dcfce7; color: #166534; }
+      .decision.rejected { background: #fee2e2; color: #991b1b; }
+      .ps { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 16px; overflow: hidden; page-break-inside: avoid; }
+      .ps-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #EEEEF5; }
+      .ps-name { font-size: 14px; font-weight: bold; color: #484888; }
+      .ps-status { font-size: 11px; font-weight: bold; color: #888; }
+      .ps-status.done { color: #22c55e; }
+      .ps-img { width: 100%; max-height: 300px; object-fit: contain; display: block; padding: 10px; }
+      .ps-note { padding: 10px 14px; font-size: 13px; background: #f9f9f9; border-top: 1px solid #eee; }
+      .footer { margin-top: 30px; font-size: 10px; color: #aaa; text-align: center; }
+    </style>
+  </head><body>
+    <div class="header">
+      <h1>Ygii — Receiving Inspection</h1>
+      <p>Date: ${date}</p>
+    </div>
+    ${decisionHTML}
+    ${stepsHTML}
+    <div class="footer">Generated by Ygii Receiving Inspection</div>
+  </body></html>`);
+  printWin.document.close();
 
-  for (const step of STEPS) {
-    const d = data[step.id];
-    if (!d.image && !d.note && !d.done) continue;
-    if (y > 245) { doc.addPage(); y = 20; }
-
-    // Step header
-    doc.setFillColor(238, 238, 245);
-    doc.roundedRect(14, y-5, pw-28, 12, 2, 2, 'F');
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(12);
-    doc.setTextColor(72, 72, 136);
-    doc.text(step.name, 17, y+3);
-    doc.setFontSize(9);
-    doc.setTextColor(d.done ? 34 : 150, d.done ? 139 : 150, d.done ? 34 : 150);
-    doc.text(d.done ? 'Completed' : 'Pending', pw-35, y+3);
-    y += 16;
-
-    // Image - high quality
-    if (d.image) {
-      try {
-        if (y > 200) { doc.addPage(); y = 20; }
-        const img = new Image();
-        await new Promise(res => { img.onload = res; img.src = d.image; });
-        // Compress to high quality JPEG via canvas
-        const canvas = document.createElement('canvas');
-        const maxPx = 2400;
-        let cw = img.naturalWidth, ch = img.naturalHeight;
-        if (cw > maxPx) { ch = Math.round(ch * maxPx / cw); cw = maxPx; }
-        canvas.width = cw; canvas.height = ch;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, cw, ch);
-        const hqData = canvas.toDataURL('image/jpeg', 0.95);
-        const maxW = pw - 28, maxH = 100;
-        let drawW = maxW, drawH = (ch / cw) * drawW;
-        if (drawH > maxH) { drawH = maxH; drawW = (cw / ch) * drawH; }
-        doc.addImage(hqData, 'JPEG', 14 + (maxW - drawW)/2, y, drawW, drawH);
-        y += drawH + 6;
-      } catch(e) {}
-    }
-
-    // Note as image
-    if (d.note) {
-      if (y > 250) { doc.addPage(); y = 20; }
-      const noteImg = await noteToImage(d.note);
-      const noteH = 24;
-      doc.addImage(noteImg, 'PNG', 14, y, pw-28, noteH);
-      y += noteH + 6;
-    }
-
-    y += 8;
-  }
-
-  doc.setTextColor(180,180,200);
-  doc.setFontSize(8);
-  doc.text('Generated by Ygii Receiving Inspection', 14, ph-10);
-
-  const pdfData = doc.output('datauristring');
+  // Save to records
   const records = JSON.parse(localStorage.getItem('ygii_inspections') || '[]');
-  records.unshift({ id:Date.now(), ref, date, pdfData, steps:STEPS.filter(s=>data[s.id].done).map(s=>s.name) });
+  records.unshift({ id: Date.now(), ref, date, decision, steps: STEPS.filter(s => data[s.id].done).map(s => s.name) });
   localStorage.setItem('ygii_inspections', JSON.stringify(records));
-  doc.save('ygii-inspection-' + ref + '.pdf');
   updateBadge();
-  toast('PDF saved!', 'green');
-  setTimeout(() => { if(confirm('Start a new inspection?')) resetAll(); }, 800);
+  toast('Saved to Records!', 'green');
+
+  setTimeout(() => { printWin.print(); }, 500);
 }
 
 function resetAll() {
